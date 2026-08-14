@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Shoko.ImagePlanner.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Shoko.ImagePlanner.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,11 @@
+bin/
+obj/
+artifacts/
+docs/local-image-stack-guide.html
+.vscode/
+.idea/
+*.user
+*.suo
+*.nupkg
+TestResults/
+.nuget/

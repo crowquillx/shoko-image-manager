@@ -1,0 +1,45 @@
+# Reusable validation gate: restore (locked), build, test, format, and
+# manifest schema check. Called by CI (ci.yml) and Release (release.yml).
+name: Build
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Restore, build, test, format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('global.json', '**/packages.lock.json') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
+      - name: Restore (locked mode)
+        run: dotnet restore Shoko.ImagePlanner.slnx --locked-mode
+
+      - name: Build
+        run: dotnet build Shoko.ImagePlanner.slnx -c Release --no-restore
+
+      - name: Test
+        run: dotnet test Shoko.ImagePlanner.slnx -c Release --no-build --no-restore
+
+      - name: Verify formatting
+        run: dotnet format Shoko.ImagePlanner.slnx --verify-no-changes --no-restore
+
+      - name: Validate plugin manifest
+        run: bash build/verify-manifest.sh plugin-manifest.json

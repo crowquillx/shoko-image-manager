@@ -1,0 +1,68 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <AssemblyName>Shoko.ImagePlanner</AssemblyName>
+    <RootNamespace>Shoko.ImagePlanner</RootNamespace>
+    <Version>1.0.0</Version>
+    <AssemblyVersion>$(Version).0</AssemblyVersion>
+    <FileVersion>$(Version).0</FileVersion>
+    <PackageId>Shoko.ImagePlanner</PackageId>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <Authors>Shoko Image Planner contributors</Authors>
+    <!--
+      Repository identity is resolved from the git remote / CI so forks and
+      local builds embed the correct URL. CI passes -p:RepositoryUrl so
+      nothing here hardcodes the canonical owner. Keep the default in sync
+      with build/package.sh for builds that do not provide either.
+    -->
+    <RepositoryUrl Condition="'$(RepositoryUrl)' == ''">https://github.com/crowquillx/shoko-image-manager</RepositoryUrl>
+    <PackageProjectUrl Condition="'$(PackageProjectUrl)' == ''">$(RepositoryUrl)</PackageProjectUrl>
+    <PackageTags>shoko,plugin,images,metadata</PackageTags>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Shoko.Abstractions" Version="6.0.0-alpha.77" ExcludeAssets="runtime" />
+    <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <AssemblyMetadata Include="PackageID" Value="7c5f8f4d-7b1d-4e07-9d4c-5d8bd6f581a2" />
+    <AssemblyMetadata Include="PackageName" Value="Shoko Image Planner" />
+    <AssemblyMetadata Include="PackageOverview" Value="Assign distinct images to series within each top-level Shoko group." />
+    <AssemblyMetadata Include="PackageTags" Value="shoko,plugin,images,metadata" />
+    <AssemblyMetadata Include="RepositoryUrl" Value="$(RepositoryUrl)" />
+    <AssemblyMetadata Include="PackageProjectUrl" Value="$(PackageProjectUrl)" />
+    <AssemblyMetadata Include="RuntimeIdentifier" Value="any" />
+    <AssemblyMetadata Include="ReleaseChannel" Value="Stable" />
+  </ItemGroup>
+  <Target Name="DeriveVersionFromGit" BeforeTargets="GetAssemblyVersion">
+    <PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
+      <GitNullStdErr>NUL</GitNullStdErr>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(OS)' != 'Windows_NT'">
+      <GitNullStdErr>/dev/null</GitNullStdErr>
+    </PropertyGroup>
+    <Exec Command="git describe --tags --abbrev=0 --match &quot;v*&quot; 2&gt;$(GitNullStdErr)" IgnoreExitCode="true" ConsoleToMsBuild="true">
+      <Output TaskParameter="ConsoleOutput" PropertyName="GitVersionTag" />
+    </Exec>
+    <!--
+      Accept vMAJOR.MINOR.PATCH (stable) and vMAJOR.MINOR.PATCH-dev.N (dev)
+      tags. The numeric part becomes the assembly version; the -dev.N suffix
+      is carried by the repository manifest's channel and version instead.
+    -->
+    <PropertyGroup>
+      <GitVersionTag Condition="'$(GitVersionTag)' != '' and !$([System.Text.RegularExpressions.Regex]::IsMatch('$(GitVersionTag)', '^v[0-9]+\\.[0-9]+\\.[0-9]+(-dev\\.[0-9]+)?$'))"></GitVersionTag>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(GitVersionTag)' != ''">
+      <Version>$([System.Text.RegularExpressions.Regex]::Match('$(GitVersionTag)', '[0-9]+\\.[0-9]+\\.[0-9]+').Value)</Version>
+      <AssemblyVersion>$(Version).0</AssemblyVersion>
+      <FileVersion>$(Version).0</FileVersion>
+    </PropertyGroup>
+  </Target>
+</Project>

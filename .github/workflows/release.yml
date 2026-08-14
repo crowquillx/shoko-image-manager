@@ -1,0 +1,192 @@
+# Build, verify, and publish a release on v* semantic version tags.
+#
+# Tag rules:
+#   vMAJOR.MINOR.PATCH        -> Stable release (channel "Stable")
+#   vMAJOR.MINOR.PATCH-dev.N  -> Dev release (channel "Dev", prerelease)
+#
+# On a matching tag push the workflow:
+#   1. Runs the same restore/build/test/format gate as CI.
+#   2. Publishes the plugin (Release, --no-self-contained) and packages the
+#      portable "any" zip with SHA-256 and a Shoko repository manifest.
+#   3. Verifies the archive excludes Shoko.Abstractions.dll and that the
+#      manifest checksum matches the archive.
+#   4. Creates (or updates) the GitHub Release with release notes generated
+#      from commits since the previous tag, and uploads the zip, the
+#      <zip>.sha256 sidecar, and manifest.json.
+#
+# Add the canonical repository to Shoko with:
+#   https://github.com/crowquillx/shoko-image-manager/releases/latest/download/manifest.json
+#
+# Nothing here hardcodes the repository owner: repository_url, homepage_url
+# and archive URLs are derived from github.repository, so forks work as-is.
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (for manual runs), e.g. v1.0.0.'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+
+  release:
+    name: Build and publish release
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Validate tag input
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          tag="${{ inputs.tag }}"
+          if [[ -z "$tag" ]]; then
+            echo "::error::workflow_dispatch requires a tag input (e.g. v1.0.0)."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'push' && github.ref || format('refs/tags/{0}', inputs.tag) }}
+          fetch-depth: 0
+
+      - name: Resolve release metadata
+        id: resolve
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == 'push' ]]; then
+            tag="${{ github.ref_name }}"
+          else
+            tag="${{ inputs.tag }}"
+          fi
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-dev\.[0-9]+)?$ ]]; then
+            echo "::error::invalid release tag '$tag'. Expected vMAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH-dev.N."
+            exit 1
+          fi
+          sha="$(git rev-parse "$tag^{commit}")"
+          version="${tag#v}"
+          if [[ "$tag" == *-dev.* ]]; then channel="Dev"; else channel="Stable"; fi
+          released_at="$(git log -1 --format=%cI "$tag")"
+          prev="$(git describe --tags --abbrev=0 --match 'v*' "$tag^" 2>/dev/null || true)"
+          {
+            echo "tag=$tag"
+            echo "version=$version"
+            echo "channel=$channel"
+            echo "sha=$sha"
+            echo "released_at=$released_at"
+            echo "prev_tag=$prev"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('global.json', '**/packages.lock.json') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
+      - name: Generate release notes
+        id: notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ steps.resolve.outputs.tag }}"
+          version="${{ steps.resolve.outputs.version }}"
+          prev="${{ steps.resolve.outputs.prev_tag }}"
+          {
+            echo "## Shoko Image Planner $version"
+            echo
+            echo "Portable \`any\` plugin archive. Add this repository to Shoko with:"
+            echo
+            echo "\`https://github.com/${{ github.repository }}/releases/latest/download/manifest.json\`"
+            echo
+            echo "### Changes"
+            echo
+            if [[ -n "$prev" ]]; then
+              git log --no-merges --pretty=format:'- %h %s' "$prev..$tag"
+            else
+              git log --no-merges --pretty=format:'- %h %s' "$tag"
+            fi
+            echo
+            echo "### Artifacts"
+            echo
+            echo "- \`Shoko.ImagePlanner-$version-any.zip\` — plugin archive"
+            echo "- \`manifest.json\` — Shoko repository manifest"
+          } > release-notes.md
+
+      - name: Package plugin
+        env:
+          REPOSITORY_URL: https://github.com/${{ github.repository }}
+          HOMEPAGE_URL: https://github.com/${{ github.repository }}
+          TAG: ${{ steps.resolve.outputs.tag }}
+          SOURCE_REVISION: ${{ steps.resolve.outputs.sha }}
+          RELEASED_AT: ${{ steps.resolve.outputs.released_at }}
+          RELEASE_NOTES_FILE: ${{ github.workspace }}/release-notes.md
+        run: bash build/package.sh Release
+
+      - name: Verify package
+        shell: bash
+        run: |
+          set -euo pipefail
+          zip_archives=(artifacts/Shoko.ImagePlanner-*.zip)
+          zip_archive="${zip_archives[0]}"
+          bash build/verify-package.sh "$zip_archive" artifacts/manifest.json
+
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ steps.resolve.outputs.tag }}"
+          version="${{ steps.resolve.outputs.version }}"
+          channel="${{ steps.resolve.outputs.channel }}"
+          flags=()
+          if [[ "$channel" == 'Dev' ]]; then
+            flags+=(--prerelease)
+          fi
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release edit "$tag" --title "Shoko Image Planner $version" --notes-file release-notes.md "${flags[@]}"
+          else
+            gh release create "$tag" \
+              --target "${{ steps.resolve.outputs.sha }}" \
+              --title "Shoko Image Planner $version" \
+              --notes-file release-notes.md \
+              "${flags[@]}"
+          fi
+          gh release upload "$tag" \
+            artifacts/Shoko.ImagePlanner-*.zip \
+            artifacts/Shoko.ImagePlanner-*.zip.sha256 \
+            artifacts/manifest.json \
+            --clobber
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: shoko-image-planner-${{ steps.resolve.outputs.tag }}
+          path: |
+            artifacts/Shoko.ImagePlanner-*.zip
+            artifacts/Shoko.ImagePlanner-*.zip.sha256
+            artifacts/manifest.json
+          if-no-files-found: error
+          retention-days: 30
