@@ -57,6 +57,22 @@
           "checksum": "sha256:f5fe468ffc2b796c9f917c5f36cc7393c817803c87271d7d4eba9f8ecfc6f860"
         }
       ]
+    },
+    {
+      "version": "1.0.3",
+      "tag": "v1.0.3",
+      "source_revision": "d27d6e45036d1cf7e814fd9cd30f12cf5ffe9d6b",
+      "released_at": "2026-08-13T21:48:23-06:00",
+      "channel": "Stable",
+      "release_notes": "## Shoko Image Planner 1.0.3\n\nPortable `any` plugin archive. Add this repository to Shoko with:\n\n`https://raw.githubusercontent.com/crowquillx/shoko-image-manager/metadata/manifest.json`\n\nThe persistent metadata feed is updated on the `metadata` branch after this release.\n\n### Changes\n\n- d27d6e4 fix(fanart): accept string numeric fields\n### Artifacts\n\n- `Shoko.ImagePlanner-1.0.3-any.zip` — plugin archive\n- `manifest.json` — Shoko repository manifest\n",
+      "archives": [
+        {
+          "runtime": "any",
+          "abstraction": "6.0.0",
+          "url": "https://github.com/crowquillx/shoko-image-manager/releases/download/v1.0.3/Shoko.ImagePlanner-1.0.3-any.zip",
+          "checksum": "sha256:87997bfa56fd070003c9935b19ee20c88c85b11afa70fed664cc07445a255265"
+        }
+      ]
     }
   ],
   "type": "package",
