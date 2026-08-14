@@ -25,6 +25,22 @@
           "checksum": "sha256:60b059c0834f42122768d772a12bf64e32f5d053f01bac30851ad5ee603c867c"
         }
       ]
+    },
+    {
+      "version": "1.0.1",
+      "tag": "v1.0.1",
+      "source_revision": "c40f93e3680190e0018db313a083e3d9b5912427",
+      "released_at": "2026-08-13T21:21:07-06:00",
+      "channel": "Stable",
+      "release_notes": "## Shoko Image Planner 1.0.1\n\nPortable `any` plugin archive. Add this repository to Shoko with:\n\n`https://raw.githubusercontent.com/crowquillx/shoko-image-manager/metadata/manifest.json`\n\nThe persistent metadata feed is updated on the `metadata` branch after this release.\n\n### Changes\n\n- c40f93e fix(api): expose planner routes and settings\n- 6471107 fix(release): publish a Shoko-compatible manifest feed\n### Artifacts\n\n- `Shoko.ImagePlanner-1.0.1-any.zip` — plugin archive\n- `manifest.json` — Shoko repository manifest\n",
+      "archives": [
+        {
+          "runtime": "any",
+          "abstraction": "6.0.0",
+          "url": "https://github.com/crowquillx/shoko-image-manager/releases/download/v1.0.1/Shoko.ImagePlanner-1.0.1-any.zip",
+          "checksum": "sha256:20e582411647a92f3464d85901337b8bfd35658333531f6266870627799bf3b6"
+        }
+      ]
     }
   ],
   "type": "package",
