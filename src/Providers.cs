@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -147,7 +148,8 @@ public static class FanartResponseMapper
                 continue;
             foreach (var item in property.Value.EnumerateArray())
             {
-                if (!item.TryGetProperty("url", out var urlElement) || !Uri.TryCreate(urlElement.GetString(), UriKind.Absolute, out var url) || !HttpSafety.IsAllowedFanartImageUri(url))
+                var urlText = GetString(item, "url");
+                if (urlText is null || !Uri.TryCreate(urlText, UriKind.Absolute, out var url) || !HttpSafety.IsAllowedFanartImageUri(url))
                     continue;
                 var remoteId = GetString(item, "id") ?? Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(url.AbsoluteUri))).ToLowerInvariant();
                 var resourceId = $"{mediaKind}:{identity}:{property.Name}:{remoteId}";
@@ -175,7 +177,26 @@ public static class FanartResponseMapper
     }
 
     private static string? GetString(JsonElement item, string name) => item.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
-    private static int? GetInt(JsonElement item, string name) => item.TryGetProperty(name, out var value) && value.TryGetInt32(out var number) && number > 0 ? number : null;
+    private static int? GetInt(JsonElement item, string name)
+    {
+        if (!item.TryGetProperty(name, out var value))
+            return null;
+        return value.ValueKind switch
+        {
+            JsonValueKind.Number => value.TryGetInt32(out var number) && number > 0 ? number : null,
+            JsonValueKind.String => ParsePositiveInt32(value.GetString()),
+            _ => null,
+        };
+    }
+
+    private static int? ParsePositiveInt32(string? text)
+    {
+        if (text is null || !decimal.TryParse(text, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed))
+            return null;
+        if (parsed != decimal.Truncate(parsed) || parsed <= 0 || parsed > int.MaxValue)
+            return null;
+        return (int)parsed;
+    }
     private static string? NormalizeLanguage(string? language) => string.IsNullOrWhiteSpace(language) || language == "00" ? null : language.Length > 5 ? language[..5] : language;
 }
 
