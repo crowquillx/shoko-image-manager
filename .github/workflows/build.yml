@@ -43,3 +43,6 @@ jobs:
 
       - name: Validate plugin manifest
         run: bash build/verify-manifest.sh plugin-manifest.json
+
+      - name: Test metadata feed merge
+        run: bash build/test-metadata-feed.sh

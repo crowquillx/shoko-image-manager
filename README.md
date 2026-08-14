@@ -77,7 +77,7 @@ deployment is performed by this repository.
 
 Releases are cut by pushing `vMAJOR.MINOR.PATCH` tags. See
 [docs/releases.md](docs/releases.md) for the full tag workflow, and to add the
-plugin repository to Shoko use the stable manifest URL
-`https://github.com/crowquillx/shoko-image-manager/releases/latest/download/manifest.json`.
+plugin repository to Shoko use the metadata feed URL
+`https://raw.githubusercontent.com/crowquillx/shoko-image-manager/metadata/manifest.json`.
 The release workflow derives repository and archive URLs from `github.repository`,
 so a fork uses its own URLs.

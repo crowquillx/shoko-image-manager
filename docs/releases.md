@@ -2,8 +2,11 @@
 
 This repository ships the plugin to Shoko through GitHub Releases. A tagged
 push builds a portable (`any`) plugin archive, verifies it, computes its
-SHA-256, and creates a GitHub Release with the archive, the checksum, and a
-Shoko-compatible repository manifest.
+SHA-256, and creates a GitHub Release with the archive, checksum, and
+per-release manifest. The same workflow also updates a persistent `metadata`
+branch with a Shoko-compatible `manifest.json` feed. GitHub raw content serves
+this file as `text/plain`,
+which Shoko accepts.
 
 ## Tagging a release
 
@@ -17,9 +20,10 @@ git tag -a v1.0.0 -m "Shoko Image Planner 1.0.0"
 git push origin v1.0.0
 ```
 
-Pushing the tag runs the `Release` workflow. The version is taken from the tag
-and embedded in the assembly and the manifest; dev tags produce a prerelease
-(`channel: Dev`) GitHub Release. The archive is named
+Pushing the tag runs the `Release` workflow. The numeric version is embedded
+in the assembly; the full tag version is written to the manifest. Dev tags keep
+the `-dev.N` suffix and produce a prerelease (`channel: Dev`) GitHub Release.
+The archive is named
 `Shoko.ImagePlanner-<version>-any.zip`. Tag names that do not match
 `vMAJOR.MINOR.PATCH` or `vMAJOR.MINOR.PATCH-dev.N` fail the workflow.
 
@@ -43,6 +47,13 @@ and embedded in the assembly and the manifest; dev tags produce a prerelease
 8. Creates (or updates) the GitHub Release, uploads the zip, the
    `<zip>.sha256` sidecar, and `manifest.json`, and writes release notes
    generated from commits since the previous tag.
+9. Validates the release manifest and merges it into `metadata/manifest.json`.
+   Existing release entries remain in publication order. A retry for the same
+   tag replaces that tag entry instead of adding a duplicate. Stable and Dev
+   entries are both kept so the feed preserves release history.
+10. Updates `metadata` with a lease-protected push. Release runs are serialized,
+    the branch is not a workflow trigger, and a remote race stops the push
+    instead of overwriting the feed.
 
 The same zip, checksum, and manifest are also uploaded as a workflow artifact
 (retained 30 days) in case a release needs to be rebuilt manually.
@@ -53,16 +64,18 @@ In Shoko, open the plugin repository manager (Settings → Plugins →
 Repositories), add a repository with this stable manifest URL:
 
 ```
-https://github.com/crowquillx/shoko-image-manager/releases/latest/download/manifest.json
+https://raw.githubusercontent.com/crowquillx/shoko-image-manager/metadata/manifest.json
 ```
 
 Sync the repository and install *Shoko Image Planner* from the package list.
+The `raw.githubusercontent.com` URL is required. The GitHub Releases asset URL
+returns `application/octet-stream`, which Shoko does not accept for a metadata
+feed. The raw URL returns `text/plain`.
 
-`releases/latest` always resolves to the newest stable release; the archive URL
-inside the manifest is pinned to the exact release tag, so Shoko downloads the
-matching archive. Dev releases are not picked up by the `latest` URL. Shoko
-verifies the archive against the `sha256:` checksum in the manifest before
-installing, and against the `<zip>.sha256` sidecar if you download manually.
+The metadata branch keeps the release entries. The archive URL inside each
+entry is pinned to its exact release tag, so Shoko downloads the matching
+archive. Shoko uses the `channel` field when it evaluates Stable and Dev
+releases, and verifies the archive against the `sha256:` checksum.
 
 ## Local packaging
 
@@ -81,6 +94,39 @@ sidecar, and `manifest.json`. It accepts environment overrides
 (`REPOSITORY_URL`, `HOMEPAGE_URL`, `TAG`, `SOURCE_REVISION`, `RELEASED_AT`,
 `RELEASE_NOTES_FILE`) so a local run can mirror a CI run exactly.
 
+## Bootstrap the metadata branch
+
+The first metadata branch can use the existing v1.0.0 release asset. This does
+not rebuild the plugin. Run these commands from a clean checkout. They download
+and validate the existing manifest, create a local orphan worktree, and use an
+empty lease to prevent overwriting a branch created by another operator.
+
+```fish
+set worktree (mktemp -d)
+set manifest "$worktree/manifest.json"
+curl --fail --location --silent --show-error \
+  https://github.com/crowquillx/shoko-image-manager/releases/download/v1.0.0/manifest.json \
+  --output $manifest
+bash build/verify-manifest.sh $manifest
+
+git fetch origin main
+git worktree add --detach "$worktree/source" origin/main
+git -C "$worktree/source" switch --orphan metadata-bootstrap
+git -C "$worktree/source" clean -fdx
+mv $manifest "$worktree/source/manifest.json"
+git -C "$worktree/source" add manifest.json
+git -C "$worktree/source" -c user.name='metadata bootstrap' \
+  -c user.email='metadata-bootstrap@localhost' commit \
+  -m 'chore: bootstrap metadata feed from v1.0.0'
+git -C "$worktree/source" push \
+  --force-with-lease=refs/heads/metadata: origin HEAD:refs/heads/metadata
+git worktree remove --force "$worktree/source"
+rm -rf $worktree
+```
+
+After this bootstrap, the next tagged release updates the branch and keeps the
+v1.0.0 entry. Do not use `git push --force` for this branch.
+
 ## Repository manifest format
 
 The generated `manifest.json` follows the Shoko server package manifest schema
@@ -98,4 +144,6 @@ sync with the assembly metadata.
 The stable installation URL above points to the canonical repository. The
 workflows never hardcode the repository owner. `repository_url`, `homepage_url`,
 and the archive URL are all derived from `github.repository`, so a fork produces
-a manifest and release assets that point at the fork.
+a manifest and release assets that point at the fork. A fork must use its own
+raw metadata URL, for example
+`https://raw.githubusercontent.com/OWNER/REPOSITORY/metadata/manifest.json`.

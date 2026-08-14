@@ -49,11 +49,10 @@ if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-dev\.[0-9]+)?$ ]]; then
   exit 1
 fi
 version="${tag#v}"
-# Manifest version is always numeric (major.minor.patch). Dev tags carry the
-# -dev.N suffix in the archive name and tag, but Shoko matches installed
-# plugin versions against the manifest version, and its own build tooling
-# writes dev releases as numeric version + channel "Dev".
-manifest_version="${version%-dev.*}"
+# Keep the prerelease suffix in the manifest. Shoko accepts semantic
+# versions such as 1.1.0-dev.1 and requires the -dev.N suffix when channel is
+# "Dev"; the assembly itself keeps the numeric version.
+manifest_version="$version"
 if [[ "$tag" == *-dev.* ]]; then
   channel="Dev"
 else

@@ -13,9 +13,10 @@
 #   4. Creates (or updates) the GitHub Release with release notes generated
 #      from commits since the previous tag, and uploads the zip, the
 #      <zip>.sha256 sidecar, and manifest.json.
+#   5. Merges the release manifest into the persistent metadata branch.
 #
 # Add the canonical repository to Shoko with:
-#   https://github.com/crowquillx/shoko-image-manager/releases/latest/download/manifest.json
+#   https://raw.githubusercontent.com/crowquillx/shoko-image-manager/metadata/manifest.json
 #
 # Nothing here hardcodes the repository owner: repository_url, homepage_url
 # and archive URLs are derived from github.repository, so forks work as-is.
@@ -35,8 +36,11 @@ on:
 permissions:
   contents: write
 
+# All release runs update the same metadata branch. Serialize them so that
+# independent tag releases cannot race while the lease check below protects
+# against changes made outside this workflow.
 concurrency:
-  group: release-${{ github.ref }}-${{ inputs.tag }}
+  group: release-${{ github.repository }}
   cancel-in-progress: false
 
 jobs:
@@ -118,7 +122,9 @@ jobs:
             echo
             echo "Portable \`any\` plugin archive. Add this repository to Shoko with:"
             echo
-            echo "\`https://github.com/${{ github.repository }}/releases/latest/download/manifest.json\`"
+            echo "\`https://raw.githubusercontent.com/${{ github.repository }}/metadata/manifest.json\`"
+            echo
+            echo "The persistent metadata feed is updated on the \`metadata\` branch after this release."
             echo
             echo "### Changes"
             echo
@@ -179,6 +185,67 @@ jobs:
             artifacts/Shoko.ImagePlanner-*.zip.sha256 \
             artifacts/manifest.json \
             --clobber
+
+      - name: Publish persistent metadata feed
+        shell: bash
+        run: |
+          set -euo pipefail
+          metadata_dir="$(mktemp -d)"
+          cleanup() {
+            git worktree remove --force "$metadata_dir" >/dev/null 2>&1 || true
+            rm -rf "$metadata_dir"
+          }
+          trap cleanup EXIT
+
+          metadata_ref='refs/remotes/origin/metadata'
+          if git ls-remote --exit-code origin refs/heads/metadata >/dev/null 2>&1; then
+            git fetch --no-tags origin "refs/heads/metadata:$metadata_ref"
+            base_sha="$(git rev-parse "$metadata_ref")"
+            git worktree add --detach "$metadata_dir" "$metadata_ref"
+            existing_manifest="$metadata_dir/manifest.json"
+          else
+            base_sha=""
+            git worktree add --detach "$metadata_dir" HEAD
+            (
+              cd "$metadata_dir"
+              git switch --orphan metadata-publish
+              git clean -fdx
+            )
+            existing_manifest='-'
+          fi
+
+          bash build/update-metadata.sh \
+            "$existing_manifest" \
+            artifacts/manifest.json \
+            "$metadata_dir/manifest.json"
+          bash build/verify-manifest.sh "$metadata_dir/manifest.json"
+
+          tag="${{ steps.resolve.outputs.tag }}"
+          jq -e --arg tag "$tag" \
+            '[.releases[] | select(.tag == $tag)] | length == 1' \
+            "$metadata_dir/manifest.json" >/dev/null
+
+          git -C "$metadata_dir" config user.name 'github-actions[bot]'
+          git -C "$metadata_dir" config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git -C "$metadata_dir" add manifest.json
+          if git -C "$metadata_dir" diff --cached --quiet; then
+            echo "Metadata feed already contains $tag; no commit is required."
+            exit 0
+          fi
+          git -C "$metadata_dir" commit -m "chore: update metadata feed for $tag"
+
+          # The expected remote SHA makes both branch creation and updates safe:
+          # a concurrent or manual update causes push to fail instead of
+          # overwriting metadata history. This branch is not a workflow trigger.
+          if [[ -n "$base_sha" ]]; then
+            git -C "$metadata_dir" push \
+              --force-with-lease="refs/heads/metadata:$base_sha" \
+              origin HEAD:refs/heads/metadata
+          else
+            git -C "$metadata_dir" push \
+              --force-with-lease=refs/heads/metadata: \
+              origin HEAD:refs/heads/metadata
+          fi
 
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@v7
