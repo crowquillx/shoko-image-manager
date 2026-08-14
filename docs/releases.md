@@ -20,8 +20,8 @@ git tag -a v1.0.0 -m "Shoko Image Planner 1.0.0"
 git push origin v1.0.0
 ```
 
-Pushing the tag runs the `Release` workflow. The numeric version is embedded
-in the assembly; the full tag version is written to the manifest. Dev tags keep
+Pushing the tag runs the `Release` workflow. The assembly and file versions use four numeric parts; the package and
+informational versions keep the full tag version. Dev tags keep
 the `-dev.N` suffix and produce a prerelease (`channel: Dev`) GitHub Release.
 The archive is named
 `Shoko.ImagePlanner-<version>-any.zip`. Tag names that do not match
@@ -31,11 +31,16 @@ The archive is named
 
 1. Runs the same restore (locked mode), build, test, and format gate as CI.
 2. Publishes `src/Shoko.ImagePlanner.csproj` (Release, `--no-self-contained`).
-3. Fails if `Shoko.Abstractions.dll` is present in the publish output.
-4. Packages a flat zip of the publish output. Shoko installs plugins from zip
+3. Stamps the project, package, assembly, file, and informational versions
+   from the tag. Stable versions use a numeric assembly version; Dev versions
+   keep `-dev.N` in package and informational metadata.
+4. Verifies the published deps project version and real DLL metadata before
+   packaging. Fails if any version is stale.
+5. Fails if `Shoko.Abstractions.dll` is present in the publish output.
+6. Packages a flat zip of the publish output. Shoko installs plugins from zip
    archives, so the release artifact is a zip, not a tarball.
-5. Computes the SHA-256 of the zip.
-6. Generates `manifest.json`, a Shoko repository manifest, with:
+7. Computes the SHA-256 of the zip.
+8. Generates `manifest.json`, a Shoko repository manifest, with:
    - `repository_url` and `homepage_url` derived from `github.repository`
      (no hardcoded owner, so forks work),
    - `version` and `channel` from the tag,
@@ -43,15 +48,16 @@ The archive is named
    - `archives` with `runtime: "any"`, the `abstraction` ABI version
      (from the referenced `Shoko.Abstractions` assembly version), the release
      asset URL, and the `sha256:` checksum.
-7. Verifies the archive and manifest with `build/verify-package.sh`.
-8. Creates (or updates) the GitHub Release, uploads the zip, the
+9. Verifies the archive, deps project version, and real DLL metadata with
+   `build/verify-package.sh`.
+10. Creates (or updates) the GitHub Release, uploads the zip, the
    `<zip>.sha256` sidecar, and `manifest.json`, and writes release notes
    generated from commits since the previous tag.
-9. Validates the release manifest and merges it into `metadata/manifest.json`.
+11. Validates the release manifest and merges it into `metadata/manifest.json`.
    Existing release entries remain in publication order. A retry for the same
    tag replaces that tag entry instead of adding a duplicate. Stable and Dev
    entries are both kept so the feed preserves release history.
-10. Updates `metadata` with a lease-protected push. Release runs are serialized,
+12. Updates `metadata` with a lease-protected push. Release runs are serialized,
     the branch is not a workflow trigger, and a remote race stops the push
     instead of overwriting the feed.
 
@@ -90,7 +96,9 @@ bash build/verify-package.sh artifacts/Shoko.ImagePlanner-1.0.0-any.zip artifact
 ```
 
 `build/package.sh` writes `artifacts/publish/`, the zip, the `.sha256`
-sidecar, and `manifest.json`. It accepts environment overrides
+sidecar, and `manifest.json`. It stamps the selected tag into the publish
+output and runs the same version checks used by release verification. It
+accepts environment overrides
 (`REPOSITORY_URL`, `HOMEPAGE_URL`, `TAG`, `SOURCE_REVISION`, `RELEASED_AT`,
 `RELEASE_NOTES_FILE`) so a local run can mirror a CI run exactly.
 

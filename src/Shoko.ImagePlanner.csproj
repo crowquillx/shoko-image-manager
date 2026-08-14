@@ -9,9 +9,15 @@
     <NoWarn>$(NoWarn);CS1591</NoWarn>
     <AssemblyName>Shoko.ImagePlanner</AssemblyName>
     <RootNamespace>Shoko.ImagePlanner</RootNamespace>
+    <!-- Release packaging supplies these properties explicitly. These values
+         keep local no-tag builds usable without deriving a version from git. -->
     <Version>1.0.0</Version>
+    <PackageVersion>$(Version)</PackageVersion>
     <AssemblyVersion>$(Version).0</AssemblyVersion>
     <FileVersion>$(Version).0</FileVersion>
+    <InformationalVersion>$(Version)</InformationalVersion>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <ReleaseChannel Condition="'$(ReleaseChannel)' == ''">Stable</ReleaseChannel>
     <PackageId>Shoko.ImagePlanner</PackageId>
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
@@ -45,30 +51,6 @@
     <AssemblyMetadata Include="RepositoryUrl" Value="$(RepositoryUrl)" />
     <AssemblyMetadata Include="PackageProjectUrl" Value="$(PackageProjectUrl)" />
     <AssemblyMetadata Include="RuntimeIdentifier" Value="any" />
-    <AssemblyMetadata Include="ReleaseChannel" Value="Stable" />
+    <AssemblyMetadata Include="ReleaseChannel" Value="$(ReleaseChannel)" />
   </ItemGroup>
-  <Target Name="DeriveVersionFromGit" BeforeTargets="GetAssemblyVersion">
-    <PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
-      <GitNullStdErr>NUL</GitNullStdErr>
-    </PropertyGroup>
-    <PropertyGroup Condition="'$(OS)' != 'Windows_NT'">
-      <GitNullStdErr>/dev/null</GitNullStdErr>
-    </PropertyGroup>
-    <Exec Command="git describe --tags --abbrev=0 --match &quot;v*&quot; 2&gt;$(GitNullStdErr)" IgnoreExitCode="true" ConsoleToMsBuild="true">
-      <Output TaskParameter="ConsoleOutput" PropertyName="GitVersionTag" />
-    </Exec>
-    <!--
-      Accept vMAJOR.MINOR.PATCH (stable) and vMAJOR.MINOR.PATCH-dev.N (dev)
-      tags. The numeric part becomes the assembly version; the -dev.N suffix
-      is carried by the repository manifest's channel and version instead.
-    -->
-    <PropertyGroup>
-      <GitVersionTag Condition="'$(GitVersionTag)' != '' and !$([System.Text.RegularExpressions.Regex]::IsMatch('$(GitVersionTag)', '^v[0-9]+\\.[0-9]+\\.[0-9]+(-dev\\.[0-9]+)?$'))"></GitVersionTag>
-    </PropertyGroup>
-    <PropertyGroup Condition="'$(GitVersionTag)' != ''">
-      <Version>$([System.Text.RegularExpressions.Regex]::Match('$(GitVersionTag)', '[0-9]+\\.[0-9]+\\.[0-9]+').Value)</Version>
-      <AssemblyVersion>$(Version).0</AssemblyVersion>
-      <FileVersion>$(Version).0</FileVersion>
-    </PropertyGroup>
-  </Target>
 </Project>

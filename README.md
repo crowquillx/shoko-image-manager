@@ -78,8 +78,11 @@ bash build/package.sh Release
 bash build/verify-package.sh artifacts/Shoko.ImagePlanner-1.0.0-any.zip artifacts/manifest.json
 ```
 
-`build/package.sh` publishes the plugin, packages the portable `any` zip,
-computes its SHA-256, and writes a Shoko-compatible repository manifest. No
+`build/package.sh` publishes the plugin with the release version in its
+project, package, deps, assembly, file, and informational metadata, then
+packages the portable `any` zip, computes its SHA-256, and writes a
+Shoko-compatible repository manifest. It fails if the published metadata does
+not match the release tag. No
 deployment is performed by this repository.
 
 ## Releases and installation in Shoko

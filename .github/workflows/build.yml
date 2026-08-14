@@ -1,5 +1,6 @@
-# Reusable validation gate: restore (locked), build, test, format, and
-# manifest schema check. Called by CI (ci.yml) and Release (release.yml).
+# Reusable validation gate: restore (locked), build, test, format, package
+# version checks, and manifest schema check. Called by CI (ci.yml) and Release
+# (release.yml).
 name: Build
 
 on:
@@ -43,6 +44,23 @@ jobs:
 
       - name: Validate plugin manifest
         run: bash build/verify-manifest.sh plugin-manifest.json
+
+      - name: Package and verify stable version stamping
+        env:
+          REPOSITORY_URL: https://github.com/${{ github.repository }}
+          HOMEPAGE_URL: https://github.com/${{ github.repository }}
+          TAG: v1.0.2
+        run: bash build/package.sh Release
+
+      - name: Test stale package rejection
+        run: bash build/test-package-version.sh artifacts/Shoko.ImagePlanner-1.0.2-any.zip artifacts/manifest.json
+
+      - name: Package and verify dev version stamping
+        env:
+          REPOSITORY_URL: https://github.com/${{ github.repository }}
+          HOMEPAGE_URL: https://github.com/${{ github.repository }}
+          TAG: v1.0.2-dev.1
+        run: bash build/package.sh Release
 
       - name: Test metadata feed merge
         run: bash build/test-metadata-feed.sh

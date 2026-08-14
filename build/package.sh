@@ -28,7 +28,7 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 publish_dir="$root/artifacts/publish"
 out_dir="$root/artifacts"
 
-for tool in jq zip unzip sha256sum; do
+for tool in dotnet jq zip unzip sha256sum; do
   if ! command -v "$tool" >/dev/null 2>&1; then
     echo "error: required tool '$tool' is not installed." >&2
     exit 1
@@ -49,6 +49,7 @@ if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-dev\.[0-9]+)?$ ]]; then
   exit 1
 fi
 version="${tag#v}"
+assembly_version="${version%%-*}.0"
 # Keep the prerelease suffix in the manifest. Shoko accepts semantic
 # versions such as 1.1.0-dev.1 and requires the -dev.N suffix when channel is
 # "Dev"; the assembly itself keeps the numeric version.
@@ -89,7 +90,15 @@ released_at="${RELEASED_AT:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
 
 # --- Publish ------------------------------------------------------------------
 rm -rf "$publish_dir"
-msbuild_args=()
+msbuild_args=(
+  -p:Version="$version"
+  -p:PackageVersion="$version"
+  -p:AssemblyVersion="$assembly_version"
+  -p:FileVersion="$assembly_version"
+  -p:InformationalVersion="$version"
+  -p:IncludeSourceRevisionInInformationalVersion=false
+  -p:ReleaseChannel="$channel"
+)
 if [[ -n "$repository_url" ]]; then
   msbuild_args+=(-p:RepositoryUrl="$repository_url" -p:PackageProjectUrl="$homepage_url")
 fi
@@ -99,6 +108,8 @@ if [[ -e "$publish_dir/Shoko.Abstractions.dll" ]]; then
   echo "error: package must not contain Shoko.Abstractions.dll. The csproj uses ExcludeAssets=runtime on the Shoko.Abstractions reference." >&2
   exit 1
 fi
+
+"$root/build/verify-published-version.sh" "$publish_dir" "$manifest_version"
 
 cp "$root/plugin-manifest.json" "$publish_dir/"
 cp "$root/README.md" "$publish_dir/"
