@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="referrer" content="no-referrer">
+    <title>Shoko Image Planner</title>
+    <link rel="stylesheet" href="/api/v3/Plugin/ImagePlanner/ui/style.css">
+    <script src="/api/v3/Plugin/ImagePlanner/ui/script.js" defer></script>
+  </head>
+  <body>
+    <main class="page-shell">
+      <header class="page-header">
+        <p class="eyebrow">Shoko plugin</p>
+        <h1>Image Planner</h1>
+        <p>Configure provider access and review planner health.</p>
+      </header>
+
+      <div id="page-message" class="message" role="status" aria-live="polite" aria-atomic="true"></div>
+
+      <section class="panel" aria-labelledby="status-heading">
+        <div class="panel-heading">
+          <div>
+            <h2 id="status-heading">Planner status</h2>
+            <p id="status-summary">Loading planner status.</p>
+          </div>
+          <button id="refresh-button" class="secondary-button" type="button">Refresh</button>
+        </div>
+        <ul id="capabilities-list" class="status-list"></ul>
+        <h3>Providers</h3>
+        <ul id="providers-list" class="provider-list"></ul>
+        <p class="operational-note">
+          Planning and applying images is operated by Nakama through the admin-only plugin API.
+          This page does not expose plan, apply, or reconcile controls.
+        </p>
+      </section>
+
+      <section class="panel" aria-labelledby="configuration-heading">
+        <div class="panel-heading">
+          <div>
+            <h2 id="configuration-heading">Configuration</h2>
+            <p>Changes use Shoko's official configuration API.</p>
+          </div>
+        </div>
+        <p id="restart-note" class="restart-note">
+          All Image Planner settings require a Shoko restart before they take effect.
+        </p>
+        <form id="configuration-form" novalidate aria-busy="false">
+          <fieldset>
+            <legend>Fanart.tv access</legend>
+            <div class="form-grid">
+              <div class="field">
+                <label for="FanartTvApiKey">Fanart.tv API key</label>
+                <input id="FanartTvApiKey" name="FanartTvApiKey" type="password" autocomplete="new-password" aria-describedby="FanartTvApiKey-help">
+                <small id="FanartTvApiKey-help">Leave blank to keep the stored key.</small>
+                <label class="checkbox-field compact">
+                  <input id="FanartTvApiKeyClear" name="FanartTvApiKeyClear" type="checkbox">
+                  <span>Clear stored API key</span>
+                </label>
+              </div>
+              <div class="field">
+                <label for="FanartTvClientKey">Fanart.tv client key <em>(optional)</em></label>
+                <input id="FanartTvClientKey" name="FanartTvClientKey" type="password" autocomplete="new-password" aria-describedby="FanartTvClientKey-help">
+                <small id="FanartTvClientKey-help">Leave blank to keep the stored key.</small>
+                <label class="checkbox-field compact">
+                  <input id="FanartTvClientKeyClear" name="FanartTvClientKeyClear" type="checkbox">
+                  <span>Clear stored client key</span>
+                </label>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Planner behavior</legend>
+            <div class="form-grid">
+              <label class="field checkbox-field">
+                <input id="Enabled" name="Enabled" type="checkbox">
+                <span>Enable the image planner</span>
+              </label>
+              <label class="field">
+                <span>Preferred language</span>
+                <input id="PreferredLanguage" name="PreferredLanguage" type="text" maxlength="5" autocomplete="language">
+              </label>
+              <label class="field">
+                <span>Fanart.tv priority</span>
+                <input id="FanartTvPriority" name="FanartTvPriority" type="number" step="1">
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Request limits</legend>
+            <div class="form-grid">
+              <label class="field">
+                <span>Request timeout (seconds)</span>
+                <input id="RequestTimeoutSeconds" name="RequestTimeoutSeconds" type="number" step="1" min="1">
+              </label>
+              <label class="field">
+                <span>Maximum JSON response (bytes)</span>
+                <input id="MaxJsonResponseBytes" name="MaxJsonResponseBytes" type="number" step="1" min="1024">
+              </label>
+              <label class="field">
+                <span>Maximum image size (bytes)</span>
+                <input id="MaxImageBytes" name="MaxImageBytes" type="number" step="1" min="1024">
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Recurring reconciliation</legend>
+            <div class="form-grid">
+              <label class="field checkbox-field">
+                <input id="RecurringReconciliationEnabled" name="RecurringReconciliationEnabled" type="checkbox">
+                <span>Enable recurring reconciliation</span>
+              </label>
+              <label class="field">
+                <span>Interval (minutes)</span>
+                <input id="ReconciliationIntervalMinutes" name="ReconciliationIntervalMinutes" type="number" step="1" min="1">
+              </label>
+              <label class="field">
+                <span>Idempotency receipt retention (days)</span>
+                <input id="IdempotencyReceiptRetentionDays" name="IdempotencyReceiptRetentionDays" type="number" step="1" min="1">
+              </label>
+            </div>
+          </fieldset>
+
+          <div class="form-actions">
+            <button id="save-button" class="primary-button" type="submit">Save configuration</button>
+            <span id="save-message" role="status" aria-live="polite" aria-atomic="true"></span>
+          </div>
+        </form>
+      </section>
+    </main>
+  </body>
+</html>

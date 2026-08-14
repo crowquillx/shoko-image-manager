@@ -8,6 +8,25 @@ servers:
 security:
   - shokoApiKey: []
 paths:
+  /api/v3/Plugin/ImagePlanner/ui:
+    get:
+      tags: [ImagePlanner]
+      security: []
+      description: Anonymous static WebUI page. It contains no configuration or status data.
+      responses:
+        '200': {description: Embedded WebUI page, content: {text/html: {schema: {type: string}}}}
+  /api/v3/Plugin/ImagePlanner/ui/style.css:
+    get:
+      tags: [ImagePlanner]
+      security: []
+      responses:
+        '200': {description: Embedded WebUI stylesheet, content: {text/css: {schema: {type: string}}}}
+  /api/v3/Plugin/ImagePlanner/ui/script.js:
+    get:
+      tags: [ImagePlanner]
+      security: []
+      responses:
+        '200': {description: Embedded WebUI script, content: {text/javascript: {schema: {type: string}}}}
   /api/v3/Plugin/ImagePlanner/status:
     get:
       tags: [ImagePlanner]

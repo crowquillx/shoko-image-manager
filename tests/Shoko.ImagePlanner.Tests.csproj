@@ -10,6 +10,7 @@
     <NoWarn>$(NoWarn);CS1591;CA1861</NoWarn>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="10.0.0" />
     <PackageReference Include="Shoko.Abstractions" Version="6.0.0-alpha.77" />
     <ProjectReference Include="../src/Shoko.ImagePlanner.csproj" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />

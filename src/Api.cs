@@ -1,3 +1,4 @@
+using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -17,8 +18,9 @@ public sealed record GroupPlanDto(int GroupId, string Name, IReadOnlyList<Series
 public sealed record PlanResponseDto(int ApiVersion, DateTimeOffset CreatedAt, IReadOnlyList<GroupPlanDto> Groups, bool DownloadsPerformed, int ChangedCount);
 
 [ApiController]
-[Authorize(Policy = "admin")]
-[Route("api/v3/Plugin/ImagePlanner")]
+[ApiVersion(3.0)]
+[Authorize(Roles = "admin")]
+[Route("/api/v{version:apiVersion}/Plugin/ImagePlanner")]
 public sealed class ImagePlannerController : ControllerBase
 {
     private readonly IImagePlannerService _service;
@@ -31,6 +33,21 @@ public sealed class ImagePlannerController : ControllerBase
         _providers = providers;
         _options = options.Value;
     }
+
+    [AllowAnonymous]
+    [HttpGet("ui")]
+    [Produces("text/html")]
+    public ActionResult GetUiPage() => GetUiResource("Shoko.ImagePlanner.Ui.image-planner.html", "text/html; charset=utf-8");
+
+    [AllowAnonymous]
+    [HttpGet("ui/style.css")]
+    [Produces("text/css")]
+    public ActionResult GetUiStyles() => GetUiResource("Shoko.ImagePlanner.Ui.image-planner.css", "text/css; charset=utf-8");
+
+    [AllowAnonymous]
+    [HttpGet("ui/script.js")]
+    [Produces("text/javascript")]
+    public ActionResult GetUiScript() => GetUiResource("Shoko.ImagePlanner.Ui.image-planner.js", "text/javascript; charset=utf-8");
 
     [HttpGet("status")]
     public ActionResult<StatusDto> GetStatus()
@@ -98,6 +115,18 @@ public sealed class ImagePlannerController : ControllerBase
         {
             return Problem(statusCode: StatusCodes.Status400BadRequest, title: "Invalid request", detail: exception.Message);
         }
+    }
+
+    private ActionResult GetUiResource(string resourceName, string contentType)
+    {
+        Response.Headers.ContentSecurityPolicy = "default-src 'none'; base-uri 'none'; connect-src 'self'; frame-ancestors 'self'; object-src 'none'; script-src 'self'; style-src 'self'; form-action 'none'";
+        Response.Headers.XContentTypeOptions = "nosniff";
+        Response.Headers.CacheControl = "no-store";
+        using var stream = typeof(ImagePlannerPlugin).Assembly.GetManifestResourceStream(resourceName);
+        if (stream is null)
+            return NotFound("The Image Planner UI resource was not found.");
+        using var reader = new StreamReader(stream);
+        return Content(reader.ReadToEnd(), contentType);
     }
 
     private static PlanResponseDto ToResponse(PlannerReport report)

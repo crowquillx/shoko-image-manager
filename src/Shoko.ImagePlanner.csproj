@@ -28,8 +28,14 @@
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="10.0.0" ExcludeAssets="runtime" />
     <PackageReference Include="Shoko.Abstractions" Version="6.0.0-alpha.77" ExcludeAssets="runtime" />
     <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Ui/image-planner.html" LogicalName="Shoko.ImagePlanner.Ui.image-planner.html" />
+    <EmbeddedResource Include="Ui/image-planner.css" LogicalName="Shoko.ImagePlanner.Ui.image-planner.css" />
+    <EmbeddedResource Include="Ui/image-planner.js" LogicalName="Shoko.ImagePlanner.Ui.image-planner.js" />
   </ItemGroup>
   <ItemGroup>
     <AssemblyMetadata Include="PackageID" Value="7c5f8f4d-7b1d-4e07-9d4c-5d8bd6f581a2" />

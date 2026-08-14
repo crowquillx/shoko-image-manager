@@ -1,7 +1,13 @@
 # Configuration
 
 The plugin registers `ImagePlannerOptions` with Shoko's public configuration
-service. Configure it in Shoko's plugin configuration UI or with the supported
+service. Open the **Image Planner** page in the Shoko WebUI plugin pages to
+load the configuration and schema. The page discovers the configuration with
+`GET /api/v3/Configuration?pluginID=7c5f8f4d-7b1d-4e07-9d4c-5d8bd6f581a2` and
+saves it with the official Configuration API. It does not show stored key
+values. Leave a key field blank to keep its stored value.
+
+Configure it in Shoko's plugin configuration UI or with the supported
 environment variable attributes. The ASP.NET configuration binder is not used.
 
 > **Restart required.** The plugin reads its configuration once, at startup,

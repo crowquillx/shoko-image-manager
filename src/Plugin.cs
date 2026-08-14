@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Shoko.Abstractions.Config.Services;
 using Shoko.Abstractions.Plugin;
+using Shoko.Abstractions.Plugin.Models;
 
 namespace Shoko.ImagePlanner;
 
@@ -13,6 +14,16 @@ public sealed class ImagePlannerPlugin : IPlugin, IPluginServiceRegistration, IP
     public Guid ID => Guid.Parse("7c5f8f4d-7b1d-4e07-9d4c-5d8bd6f581a2");
     public string Name => "Shoko Image Planner";
     public string? Description => "Assigns distinct provider and Shoko images within each top-level group.";
+
+    public IReadOnlyList<PluginPage> GetPages() =>
+    [
+        new PluginPage
+        {
+            Name = "Image Planner",
+            Url = "/api/v3/Plugin/ImagePlanner/ui",
+            CanEmbed = true,
+        },
+    ];
 
     public static void RegisterServices(IServiceCollection services, IApplicationPaths applicationPaths)
     {

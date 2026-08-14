@@ -30,7 +30,7 @@ planned independently.
 
 The fixed admin-only routes are under
 `/api/v3/Plugin/ImagePlanner`. Shoko API-key authentication is required, as is
-the `admin` policy. `plan` is read-only by default. `apply` and `reconcile`
+the `admin` role. `plan` is read-only by default. `apply` and `reconcile`
 require an `Idempotency-Key` header. The versioned OpenAPI contract is in
 `docs/openapi.yaml`; clients must send `apiVersion: 1` and should reject an
 unknown response `apiVersion`.
@@ -39,6 +39,13 @@ unknown response `apiVersion`.
 - `POST plan`
 - `POST apply`
 - `POST reconcile`
+- `GET ui` and its embedded `style.css` and `script.js` resources for the Shoko WebUI
+
+The WebUI page is a same-origin embedded page. It reads the logged-in WebUI
+API key from same-origin browser storage and sends it in the `apikey` header for
+configuration, status, provider, and save requests. The anonymous page and its
+static resources contain no configuration or secret data. The page does not
+include plan, apply, or reconcile controls; use Nakama for those operations.
 
 `plan` is read-only by default. If `ingest: true` is sent, it downloads only
 candidates selected by the plan and requires an `Idempotency-Key` header, like
@@ -50,8 +57,10 @@ fallback assignments and reports the condition instead of failing.
 
 ## Configuration
 
-See [docs/configuration.md](docs/configuration.md). Recurring reconciliation
-is disabled by default and has a single-flight lock when enabled.
+See [docs/configuration.md](docs/configuration.md). The Shoko WebUI plugin
+page exposes the same settings and shows planner status and providers.
+Recurring reconciliation is disabled by default and has a single-flight lock
+when enabled.
 
 > The plugin reads its configuration once at startup. All settings are marked
 > `RequiresRestart` and changes only take effect after a Shoko restart.
