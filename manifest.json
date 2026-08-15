@@ -73,6 +73,22 @@
           "checksum": "sha256:87997bfa56fd070003c9935b19ee20c88c85b11afa70fed664cc07445a255265"
         }
       ]
+    },
+    {
+      "version": "1.0.4",
+      "tag": "v1.0.4",
+      "source_revision": "cd36c5ac91dbae0c4d9008ec9e94b5601d4c2928",
+      "released_at": "2026-08-15T12:26:54-06:00",
+      "channel": "Stable",
+      "release_notes": "## Shoko Image Planner 1.0.4\n\nPortable `any` plugin archive. Add this repository to Shoko with:\n\n`https://raw.githubusercontent.com/crowquillx/shoko-image-manager/metadata/manifest.json`\n\nThe persistent metadata feed is updated on the `metadata` branch after this release.\n\n### Changes\n\n- cd36c5a feat(planner): expose assignment previews\n### Artifacts\n\n- `Shoko.ImagePlanner-1.0.4-any.zip` — plugin archive\n- `manifest.json` — Shoko repository manifest\n",
+      "archives": [
+        {
+          "runtime": "any",
+          "abstraction": "6.0.0",
+          "url": "https://github.com/crowquillx/shoko-image-manager/releases/download/v1.0.4/Shoko.ImagePlanner-1.0.4-any.zip",
+          "checksum": "sha256:6425b03373d78a6a30faa8e19f5afa92d5474691f890cc3bfceafedc184d80a6"
+        }
+      ]
     }
   ],
   "type": "package",
