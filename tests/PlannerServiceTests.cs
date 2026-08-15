@@ -4,6 +4,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Shoko.Abstractions.Metadata.Enums;
 using Shoko.Abstractions.Metadata.Image.CrossReferences;
 using Shoko.Abstractions.Metadata.Services;
 using Shoko.Abstractions.Metadata.Shoko;
@@ -106,6 +107,32 @@ public sealed class ImagePlannerServiceTests
 
         Assert.Single(report.Groups);
         Assert.Contains(logger.Entries, entry => entry.Level == LogLevel.Warning && entry.Exception is OperationCanceledException);
+    }
+
+    [Fact]
+    public async Task PlanCarriesProviderPreviewMetadataFromTheSelectedCandidate()
+    {
+        var service = CreateService(
+            GroupManager(Group(10, 10, "Top", Series(100))),
+            ImageManager(),
+            [new FakeProvider
+            {
+                Name = "fanart.tv",
+                Candidates = [new ProviderCandidate("provider", ImageEntityType.Primary, DataSource.FanartTV, "resource", "https://assets.fanart.tv/image.jpg", 1000, 1500, "en", null, null, "fanart.tv", 10)],
+            }],
+            new InMemoryStateStore(),
+            NullLogger<ImagePlannerService>.Instance);
+
+        var report = await service.PlanAsync(new PlannerRequest(), CancellationToken.None);
+
+        var assignment = Assert.Single(report.Groups.SelectMany(group => group.Series).SelectMany(series => series.Assignments), item => item.CandidateId == "provider");
+        Assert.NotNull(assignment.Preview);
+        Assert.Null(assignment.Preview.ImageId);
+        Assert.Equal("https://assets.fanart.tv/image.jpg", assignment.Preview.DownloadUrl);
+        Assert.Equal(1000, assignment.Preview.Width);
+        Assert.Equal(1500, assignment.Preview.Height);
+        Assert.Equal(DataSource.FanartTV, assignment.Preview.Source);
+        Assert.Equal("en", assignment.Preview.Language);
     }
 
     [Fact]

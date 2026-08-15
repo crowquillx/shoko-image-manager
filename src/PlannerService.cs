@@ -119,7 +119,13 @@ public sealed class ImagePlannerService : IImagePlannerService
                 {
                     if (!assignments.TryGetValue(assignment.SeriesId, out var list))
                         assignments[assignment.SeriesId] = list = [];
-                    list.Add(assignment);
+                    var candidate = typeRows
+                        .Where(row => row.SeriesId == assignment.SeriesId)
+                        .SelectMany(row => row.Candidates)
+                        .FirstOrDefault(item => item.CandidateId == assignment.CandidateId);
+                    list.Add(candidate is null
+                        ? assignment with { Preview = null }
+                        : assignment with { Preview = PlannerAssignmentPreview.FromCandidate(candidate) });
                 }
             }
 

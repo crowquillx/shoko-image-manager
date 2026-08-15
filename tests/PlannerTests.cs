@@ -56,6 +56,38 @@ public sealed class PlannerTests
     }
 
     [Fact]
+    public void CarriesSelectedLocalImagePreviewIntoAssignment()
+    {
+        var imageId = Guid.NewGuid();
+        var candidate = new PlannerCandidate("local", ImageEntityType.Primary, DataSource.User, imageId, "resource", 1000, 1500, "en", null, null, true, true, null, 0, null, true);
+
+        var result = new GlobalAssignmentPlanner().Assign(ImageEntityType.Primary, [new PlannerSeries(1, "A", [candidate])], "en");
+
+        var preview = Assert.Single(result.Assignments).Preview;
+        Assert.NotNull(preview);
+        Assert.Equal(imageId, preview.ImageId);
+        Assert.Null(preview.DownloadUrl);
+        Assert.Equal(1000, preview.Width);
+        Assert.Equal(1500, preview.Height);
+        Assert.Equal(DataSource.User, preview.Source);
+        Assert.Equal("en", preview.Language);
+    }
+
+    [Fact]
+    public void OmitsUnsafeProviderPreviewUrlWithoutDroppingOtherMetadata()
+    {
+        var candidate = Candidate("provider") with { DownloadUrl = "https://assets.fanart.tv/image.jpg?api-key=secret" };
+
+        var preview = PlannerAssignmentPreview.FromCandidate(candidate);
+
+        Assert.Null(preview.DownloadUrl);
+        Assert.Equal(candidate.Source, preview.Source);
+        Assert.Equal(candidate.Width, preview.Width);
+        Assert.Equal(candidate.Height, preview.Height);
+        Assert.Equal(candidate.LanguageCode, preview.Language);
+    }
+
+    [Fact]
     public void DoesNotTreatDifferentImagesAsPerceptualDuplicates()
     {
         var planner = new GlobalAssignmentPlanner();

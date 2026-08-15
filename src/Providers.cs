@@ -141,6 +141,8 @@ public static class FanartResponseMapper
     public static IReadOnlyList<ProviderCandidate> Map(byte[] json, string mediaKind, string identity, int priority)
     {
         using var document = JsonDocument.Parse(json);
+        if (document.RootElement.ValueKind != JsonValueKind.Object)
+            return [];
         var candidates = new List<ProviderCandidate>();
         foreach (var property in document.RootElement.EnumerateObject())
         {
@@ -148,6 +150,8 @@ public static class FanartResponseMapper
                 continue;
             foreach (var item in property.Value.EnumerateArray())
             {
+                if (item.ValueKind != JsonValueKind.Object)
+                    continue;
                 var urlText = GetString(item, "url");
                 if (urlText is null || !Uri.TryCreate(urlText, UriKind.Absolute, out var url) || !HttpSafety.IsAllowedFanartImageUri(url))
                     continue;
@@ -176,10 +180,10 @@ public static class FanartResponseMapper
             .ToArray();
     }
 
-    private static string? GetString(JsonElement item, string name) => item.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+    private static string? GetString(JsonElement item, string name) => item.ValueKind == JsonValueKind.Object && item.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
     private static int? GetInt(JsonElement item, string name)
     {
-        if (!item.TryGetProperty(name, out var value))
+        if (item.ValueKind != JsonValueKind.Object || !item.TryGetProperty(name, out var value))
             return null;
         return value.ValueKind switch
         {

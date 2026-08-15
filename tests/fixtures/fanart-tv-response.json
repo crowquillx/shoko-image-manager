@@ -1,0 +1,22 @@
+{
+  "name": "Game of Thrones",
+  "thetvdb_id": "121361",
+  "tvposter": [
+    {
+      "id": "12345",
+      "url": "https://assets.fanart.tv/fanart/tv/121361/tvposter/game-of-thrones-5a857a2f2f8ad.jpg",
+      "lang": "en",
+      "likes": "12",
+      "size": "1000x1500"
+    }
+  ],
+  "showbackground": [
+    {
+      "id": "67890",
+      "url": "https://assets.fanart.tv/fanart/tv/121361/showbackground/game-of-thrones-5a857a2f2f8ad.jpg",
+      "lang": "en",
+      "likes": 3,
+      "size": "1920x1080"
+    }
+  ]
+}

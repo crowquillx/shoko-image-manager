@@ -7,6 +7,8 @@ namespace Shoko.ImagePlanner.Tests;
 
 public sealed class FanartResponseMapperTests
 {
+    private static byte[] Fixture(string name) => File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "fixtures", name));
+
     private static ProviderCandidate? MapItem(string itemJson)
     {
         var json = Encoding.UTF8.GetBytes($$"""{"tvposter":[{{itemJson}}]}""");
@@ -21,20 +23,7 @@ public sealed class FanartResponseMapperTests
         // Fanart.tv v3 returns image items where "likes" is a JSON string and
         // dimensions only exist as the "size" text ("WxH"); there is no numeric
         // width/height. The mapper must not throw and must keep the candidates.
-        var json = Encoding.UTF8.GetBytes("""
-            {
-              "name": "Game of Thrones",
-              "thetvdb_id": "121361",
-              "tvposter": [
-                { "id": "12345", "url": "https://assets.fanart.tv/fanart/tv/121361/tvposter/game-of-thrones-5a857a2f2f8ad.jpg", "lang": "en", "likes": "12", "size": "1000x1500" }
-              ],
-              "showbackground": [
-                { "id": "67890", "url": "https://assets.fanart.tv/fanart/tv/121361/showbackground/game-of-thrones-5a857a2f2f8ad.jpg", "lang": "en", "likes": "3", "size": "1920x1080" }
-              ]
-            }
-            """);
-
-        var candidates = FanartResponseMapper.Map(json, "tv", "121361", 10);
+        var candidates = FanartResponseMapper.Map(Fixture("fanart-tv-response.json"), "tv", "121361", 10);
 
         Assert.Equal(2, candidates.Count);
         var poster = Assert.Single(candidates, item => item.ImageType == ImageEntityType.Primary);
@@ -109,10 +98,17 @@ public sealed class FanartResponseMapperTests
     [InlineData("""{"id":"1","url":true}""")]
     [InlineData("""{"id":"1","url":["https://assets.fanart.tv/a.jpg"]}""")]
     [InlineData("""{"id":"1","url":{"href":"https://assets.fanart.tv/a.jpg"}}""")]
+    [InlineData("123")]
     public void SkipsItemsWithNonStringUrlsWithoutThrowing(string itemJson)
     {
         var json = Encoding.UTF8.GetBytes($$"""{"tvposter":[{{itemJson}}]}""");
         Assert.Empty(FanartResponseMapper.Map(json, "tv", "123", 10));
+    }
+
+    [Fact]
+    public void IgnoresNonObjectFanartResponsesWithoutThrowing()
+    {
+        Assert.Empty(FanartResponseMapper.Map(Encoding.UTF8.GetBytes("[]"), "tv", "123", 10));
     }
 
     [Fact]

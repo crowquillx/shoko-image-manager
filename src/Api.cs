@@ -12,7 +12,8 @@ public sealed record GroupDto(int Id, string Name, int SeriesCount);
 public sealed record PlanRequestDto(int ApiVersion = 1, IReadOnlyList<int>? GroupIds = null, bool Ingest = false, bool Force = false);
 public sealed record ApplyRequestDto(int ApiVersion = 1, IReadOnlyList<int>? GroupIds = null, bool Force = false);
 public sealed record ReconcileRequestDto(int ApiVersion = 1, IReadOnlyList<int>? GroupIds = null, bool Force = false);
-public sealed record AssignmentDto(int SeriesId, string CandidateId, string ImageType, bool IsUnique, bool IsFallback, long Score, string? Reason);
+public sealed record AssignmentPreviewDto(string? ImageId, string? DownloadUrl, int? Width, int? Height, string Source, string? Language);
+public sealed record AssignmentDto(int SeriesId, string CandidateId, string ImageType, bool IsUnique, bool IsFallback, long Score, string? Reason, AssignmentPreviewDto? Preview = null);
 public sealed record SeriesPlanDto(int SeriesId, string Name, IReadOnlyList<AssignmentDto> Assignments, bool Protected, string? ProtectedReason);
 public sealed record GroupPlanDto(int GroupId, string Name, IReadOnlyList<SeriesPlanDto> Series, bool HasInsufficientUniqueCandidates);
 public sealed record PlanResponseDto(int ApiVersion, DateTimeOffset CreatedAt, IReadOnlyList<GroupPlanDto> Groups, bool DownloadsPerformed, int ChangedCount);
@@ -131,5 +132,10 @@ public sealed class ImagePlannerController : ControllerBase
 
     private static PlanResponseDto ToResponse(PlannerReport report)
         => new(1, report.CreatedAt, report.Groups.Select(group => new GroupPlanDto(group.GroupId, group.Name,
-            group.Series.Select(series => new SeriesPlanDto(series.SeriesId, series.Name, series.Assignments.Select(assignment => new AssignmentDto(assignment.SeriesId, assignment.CandidateId, assignment.ImageType.ToString(), assignment.IsUnique, assignment.IsFallback, assignment.Score, assignment.Reason)).ToArray(), series.Protected, series.ProtectedReason)).ToArray(), group.HasInsufficientUniqueCandidates)).ToArray(), report.DownloadsPerformed, report.ChangedCount);
+            group.Series.Select(series => new SeriesPlanDto(series.SeriesId, series.Name, series.Assignments.Select(assignment => new AssignmentDto(assignment.SeriesId, assignment.CandidateId, assignment.ImageType.ToString(), assignment.IsUnique, assignment.IsFallback, assignment.Score, assignment.Reason, ToPreview(assignment.Preview))).ToArray(), series.Protected, series.ProtectedReason)).ToArray(), group.HasInsufficientUniqueCandidates)).ToArray(), report.DownloadsPerformed, report.ChangedCount);
+
+    private static AssignmentPreviewDto? ToPreview(PlannerAssignmentPreview? preview)
+        => preview is null
+            ? null
+            : new AssignmentPreviewDto(preview.ImageId?.ToString("D"), preview.DownloadUrl, preview.Width, preview.Height, preview.Source.ToString(), preview.Language);
 }

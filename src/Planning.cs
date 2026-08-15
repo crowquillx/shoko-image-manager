@@ -33,6 +33,36 @@ public sealed record PlannerSeries(
     IReadOnlyList<PlannerCandidate> Candidates,
     PlannerCandidate? ProtectedChoice = null);
 
+public sealed record PlannerAssignmentPreview(
+    Guid? ImageId,
+    string? DownloadUrl,
+    int? Width,
+    int? Height,
+    DataSource Source,
+    string? Language)
+{
+    public static PlannerAssignmentPreview FromCandidate(PlannerCandidate candidate)
+    {
+        ArgumentNullException.ThrowIfNull(candidate);
+        return new(
+            candidate.ImageId is { } imageId && imageId != Guid.Empty ? imageId : null,
+            SafeDownloadUrl(candidate.DownloadUrl),
+            candidate.Width is > 0 ? candidate.Width : null,
+            candidate.Height is > 0 ? candidate.Height : null,
+            candidate.Source,
+            string.IsNullOrWhiteSpace(candidate.LanguageCode) ? null : candidate.LanguageCode);
+    }
+
+    private static string? SafeDownloadUrl(string? downloadUrl)
+    {
+        if (string.IsNullOrWhiteSpace(downloadUrl) || !Uri.TryCreate(downloadUrl, UriKind.Absolute, out var uri))
+            return null;
+        if (!HttpSafety.IsAllowedFanartImageUri(uri) || uri.Query.Length > 0 || uri.Fragment.Length > 0)
+            return null;
+        return uri.AbsoluteUri;
+    }
+}
+
 public sealed record PlannerAssignment(
     int SeriesId,
     ImageEntityType ImageType,
@@ -40,7 +70,8 @@ public sealed record PlannerAssignment(
     bool IsUnique,
     bool IsFallback,
     long Score,
-    string? Reason);
+    string? Reason,
+    PlannerAssignmentPreview? Preview = null);
 
 public sealed record AssignmentResult(
     IReadOnlyList<PlannerAssignment> Assignments,
@@ -89,7 +120,7 @@ public sealed class GlobalAssignmentPlanner
                     .OrderByDescending(candidate => Score(candidate, preferredLanguage))
                     .ThenBy(candidate => candidate.CandidateId, StringComparer.Ordinal)
                     .First();
-                assignments.Add(new PlannerAssignment(rows[row].SeriesId, type, selected.CandidateId, true, false, Score(selected, preferredLanguage), null));
+                assignments.Add(new PlannerAssignment(rows[row].SeriesId, type, selected.CandidateId, true, false, Score(selected, preferredLanguage), null, PlannerAssignmentPreview.FromCandidate(selected)));
                 continue;
             }
 
@@ -99,9 +130,9 @@ public sealed class GlobalAssignmentPlanner
                 .ThenBy(candidate => candidate.CandidateId, StringComparer.Ordinal)
                 .FirstOrDefault();
             if (fallback is not null)
-                assignments.Add(new PlannerAssignment(rows[row].SeriesId, type, fallback.CandidateId, false, true, Score(fallback, preferredLanguage), "No unused unique image was available."));
+                assignments.Add(new PlannerAssignment(rows[row].SeriesId, type, fallback.CandidateId, false, true, Score(fallback, preferredLanguage), "No unused unique image was available.", PlannerAssignmentPreview.FromCandidate(fallback)));
             else
-                assignments.Add(new PlannerAssignment(rows[row].SeriesId, type, string.Empty, false, true, 0, "No candidate image was available."));
+                assignments.Add(new PlannerAssignment(rows[row].SeriesId, type, string.Empty, false, true, 0, "No candidate image was available.", null));
         }
 
         return new AssignmentResult(assignments, clusterKeys.Length, rows.Length, clusterKeys.Length < rows.Length);

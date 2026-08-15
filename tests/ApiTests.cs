@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using Shoko.Abstractions.Metadata.Enums;
 using Xunit;
 
 namespace Shoko.ImagePlanner.Tests;
@@ -141,6 +142,30 @@ public sealed class ImagePlannerControllerTests
         Assert.Null(service.IdempotencyKey);
     }
 
+    [Fact]
+    public async Task PlanResponseIncludesOptionalAssignmentPreviewMetadata()
+    {
+        var imageId = Guid.NewGuid();
+        var service = new RecordingPlannerService
+        {
+            ReportValue = new PlannerReport(DateTimeOffset.UtcNow,
+            [new PlannerGroup(1, "Group", [new PlannedSeries(2, "Series",
+                [new PlannerAssignment(2, ImageEntityType.Primary, "local", true, false, 100, null,
+                    new PlannerAssignmentPreview(imageId, null, 1000, 1500, DataSource.User, "en"))], false, null)], false)], false),
+        };
+        var controller = CreateController(service);
+
+        var result = await controller.Plan(new PlanRequestDto(), CancellationToken.None);
+
+        var response = Assert.IsType<PlanResponseDto>(Assert.IsType<OkObjectResult>(result.Result).Value);
+        var preview = Assert.Single(Assert.Single(Assert.Single(response.Groups).Series).Assignments).Preview;
+        Assert.NotNull(preview);
+        Assert.Equal(imageId.ToString("D"), preview.ImageId);
+        Assert.Null(preview.DownloadUrl);
+        Assert.Equal("User", preview.Source);
+        Assert.Equal("en", preview.Language);
+    }
+
     private static ImagePlannerController CreateController(RecordingPlannerService service)
     {
         var controller = new ImagePlannerController(
@@ -155,26 +180,27 @@ public sealed class ImagePlannerControllerTests
     {
         public string? Operation { get; private set; }
         public string? IdempotencyKey { get; private set; }
+        public PlannerReport ReportValue { get; set; } = Report();
 
         public Task<PlannerReport> PlanAsync(PlannerRequest request, CancellationToken cancellationToken, string? idempotencyKey = null)
         {
             Operation = "plan";
             IdempotencyKey = idempotencyKey;
-            return Task.FromResult(Report());
+            return Task.FromResult(ReportValue);
         }
 
         public Task<PlannerReport> ApplyAsync(PlannerRequest request, string idempotencyKey, CancellationToken cancellationToken)
         {
             Operation = "apply";
             IdempotencyKey = idempotencyKey;
-            return Task.FromResult(Report());
+            return Task.FromResult(ReportValue);
         }
 
         public Task<PlannerReport> ReconcileAsync(PlannerRequest request, string idempotencyKey, CancellationToken cancellationToken)
         {
             Operation = "reconcile";
             IdempotencyKey = idempotencyKey;
-            return Task.FromResult(Report());
+            return Task.FromResult(ReportValue);
         }
 
         private static PlannerReport Report() => new(DateTimeOffset.UtcNow, [], false);
